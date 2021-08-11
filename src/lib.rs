@@ -17,10 +17,10 @@ impl std::convert::TryFrom<FileHashHex> for FileHash {
     }
 }
 
-impl std::convert::Into<FileHashHex> for FileHash {
-    fn into(self) -> FileHashHex {
+impl std::convert::From<FileHash> for FileHashHex {
+    fn from(hash: FileHash) -> FileHashHex {
         FileHashHex {
-            hash: hex::encode(self.hash),
+            hash: hex::encode(hash.hash),
         }
     }
 }
