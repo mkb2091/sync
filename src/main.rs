@@ -1,5 +1,5 @@
 use clap::Clap;
-use sha2::Digest;
+use digest::Digest;
 
 #[derive(Clap)]
 struct Opts {
@@ -8,9 +8,7 @@ struct Opts {
 
 fn main() {
     let opts: Opts = Opts::parse();
-    let mut buffer = vec![0; 32 * 1024];
-    let buffer: &mut [u8] = &mut buffer;
-    let mut hasher = sha2::Sha384::new();
+    let mut hasher = blake3::Hasher::new();
 
     let mut contents = sync::Contents::default();
     for result in ignore::WalkBuilder::new(&opts.path)
@@ -27,7 +25,7 @@ fn main() {
             .map(|metadata| metadata.is_file())
             .unwrap_or(true)
         {
-            match sync::FileHash::new(result.path(), buffer, &mut hasher) {
+            match sync::FileHash::new(result.path(), &mut hasher) {
                 Ok(file_hash) => contents.add_file(path, file_hash),
                 Err(error) => println!("Error: {:?}", error),
             }

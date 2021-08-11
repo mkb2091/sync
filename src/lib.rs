@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sha2::Digest;
+use digest::Digest;
 use std::io::Read;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -33,19 +33,12 @@ pub struct FileHash {
 }
 
 impl FileHash {
-    pub fn new<D: Digest, P: AsRef<std::path::Path>>(
+    pub fn new<D: Digest + std::io::Write, P: AsRef<std::path::Path>>(
         path: P,
-        buffer: &mut [u8],
         hasher: &mut D,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let mut file = std::fs::File::open(&path)?;
-        loop {
-            let n = file.read(buffer)?;
-            if n == 0 {
-                break;
-            }
-            hasher.update(&buffer[..std::cmp::min(n, buffer.len())]);
-        }
+        std::io::copy(&mut file, hasher)?;
         Ok(Self {
             hash: hasher
                 .finalize_reset()
