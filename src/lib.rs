@@ -134,10 +134,8 @@ impl Contents {
                     return;
                 };
             } else {
-                if let FsItem::Directory(_) = item {
-                    if self.items.contains_key(base) {
-                        return;
-                    }
+                if item.as_directory().is_some() && self.items.contains_key(base) {
+                    return;
                 }
                 self.items
                     .insert(base.to_path_buf().into_boxed_path(), item);
