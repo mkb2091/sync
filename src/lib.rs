@@ -63,6 +63,50 @@ enum FsItem {
     Directory(Contents),
 }
 
+impl FsItem {
+    fn create(path: &std::path::Path, item: FsItem) -> Self {
+        let mut new = item;
+        let mut components = path.components().peekable();
+        while let Some(next) = components.next_back() {
+            if components.peek().is_some() {
+                let mut new2: Contents = Default::default();
+                let next: &std::path::Path = next.as_ref();
+                new2.items.insert(next.to_path_buf().into_boxed_path(), new);
+                new = FsItem::Directory(new2);
+            }
+        }
+        new
+    }
+    fn as_file(&self) -> Option<&FileHash> {
+        if let FsItem::File(file) = self {
+            Some(file)
+        } else {
+            None
+        }
+    }
+    fn as_file_mut(&mut self) -> Option<&mut FileHash> {
+        if let FsItem::File(file) = self {
+            Some(file)
+        } else {
+            None
+        }
+    }
+    fn as_directory(&self) -> Option<&Contents> {
+        if let FsItem::Directory(file) = self {
+            Some(file)
+        } else {
+            None
+        }
+    }
+    fn as_directory_mut(&mut self) -> Option<&mut Contents> {
+        if let FsItem::Directory(file) = self {
+            Some(file)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Contents {
@@ -76,14 +120,19 @@ impl Contents {
             let base: &std::path::Path = base.as_ref();
             let without_base = components.as_path();
             if components.next().is_some() {
-                if let Some(FsItem::Directory(existing)) = self.items.get_mut(base) {
-                    existing.add_item(without_base, item);
+                if let Some(dir) = self
+                    .items
+                    .get_mut(base)
+                    .and_then(|item| item.as_directory_mut())
+                {
+                    dir.add_item(without_base, item)
                 } else {
-                    let mut new: Self = Default::default();
-                    new.add_item(without_base, item);
-                    self.items
-                        .insert(base.to_path_buf().into_boxed_path(), FsItem::Directory(new));
-                }
+                    self.items.insert(
+                        base.to_path_buf().into_boxed_path(),
+                        FsItem::create(without_base, item),
+                    );
+                    return;
+                };
             } else {
                 if let FsItem::Directory(_) = item {
                     if self.items.contains_key(base) {
