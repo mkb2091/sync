@@ -44,7 +44,7 @@ impl FileHash {
             if n == 0 {
                 break;
             }
-            hasher.update(&buffer[..std::cmp::max(n, buffer.len())]);
+            hasher.update(&buffer[..std::cmp::min(n, buffer.len())]);
         }
         Ok(Self {
             hash: hasher
