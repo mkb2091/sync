@@ -1,6 +1,5 @@
 use clap::Clap;
 use sha2::Digest;
-use std::io::Read;
 
 #[derive(Clap)]
 struct Opts {
@@ -12,6 +11,8 @@ fn main() {
     let mut buffer = vec![0; 32 * 1024];
     let buffer: &mut [u8] = &mut buffer;
     let mut hasher = sha2::Sha384::new();
+
+    let mut contents = sync::Contents::default();
     for result in ignore::WalkBuilder::new(&opts.path)
         .build()
         .filter_map(|x| x.ok())
@@ -26,33 +27,14 @@ fn main() {
             .map(|metadata| metadata.is_file())
             .unwrap_or(true)
         {
-            match std::fs::File::open(result.path()) {
-                Ok(mut file) => {
-                    let mut counter = 0;
-                    loop {
-                        match file.read(buffer) {
-                            Ok(n) => {
-                                if n == 0 {
-                                    break;
-                                }
-                                hasher.update(&buffer[..std::cmp::max(n, buffer.len())]);
-                            }
-                            Err(error) => {
-                                println!("Error: {:?}", error);
-                                break;
-                            }
-                        }
-                        counter += 1;
-                    }
-                    println!("Path: {:?}", path);
-                    println!("Hash: {:?}", hasher.finalize_reset());
-                    println!("Counter: {:?}", counter);
-                }
-
+            match sync::FileHash::new(result.path(), buffer, &mut hasher) {
+                Ok(file_hash) => contents.add_file(path, file_hash),
                 Err(error) => println!("Error: {:?}", error),
             }
         } else {
-            println!("Dir: {:?}", path);
+            contents.add_dir(path);
         }
     }
+
+    println!("{}", serde_yaml::to_string(&contents).unwrap());
 }
